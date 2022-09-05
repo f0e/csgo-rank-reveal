@@ -6,7 +6,8 @@ using this, i run the `name` and `status` commands to get the players in the cur
 
 ## setup
 
-add the launch option `-netconport 2121`
+- install the requirements: `pip install -r requirements.txt`
+- add the launch option `-netconport 2121` to csgo
 
 ## usage
 
