@@ -39,7 +39,7 @@ def read_console(stop=[]):
     res = ""
 
     while True:
-        data = tn.read_until(b"\r\n", timeout=1).decode("utf-8")
+        data = tn.read_until(b"\r\n").decode("utf-8")
         res += data
 
         if not stop:
@@ -98,6 +98,10 @@ def get_players():
 
         if cur_field:
             fields.append(cur_field)
+
+        # filter out gotv
+        if fields[1] == "GOTV":
+            continue
 
         # add player
         player = {
