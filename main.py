@@ -39,7 +39,7 @@ def read_console(stop=[]):
     res = ""
 
     while True:
-        data = tn.read_until(b"\r\n").decode("utf-8")
+        data = tn.read_until(b"\n").decode("utf-8")
         res += data
 
         if not stop:
@@ -77,12 +77,13 @@ def get_players():
         if line == "# userid name uniqueid connected ping loss state rate":
             continue
 
-        line = line.split("# ")[1]
+        line = line.split("#")[1]
 
         # parse fields
         fields = []
         cur_field = ""
         in_str = False
+        in_space = True
         for char in line:
             if char == '"':
                 in_str = not in_str
@@ -90,11 +91,15 @@ def get_players():
 
             if not in_str:
                 if char == " ":
-                    fields.append(cur_field)
-                    cur_field = ""
+                    if not in_space:
+                        fields.append(cur_field)
+                        cur_field = ""
+                        in_space = True
+
                     continue
 
             cur_field += char
+            in_space = False
 
         if cur_field:
             fields.append(cur_field)
