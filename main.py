@@ -35,6 +35,15 @@ def connect():
     tn = telnetlib.Telnet(HOST, PORT)
 
 
+def print_both(str=""):
+    print(str)
+    tn.write(f'echo "{str}"\n'.encode())
+
+
+def print_game(str=""):
+    tn.write(f'echo "{str}"\n'.encode())
+
+
 def read_console(stop=[]):
     res = ""
 
@@ -59,12 +68,12 @@ def read_console(stop=[]):
 
 def get_players():
     # get local name
-    tn.write("name\n".encode("ascii"))
+    tn.write(b"name\n")
     name_res = read_console()
     local_name = name_res.split('" ( def')[0].split('name" = "')[1]
 
     # get status
-    tn.write("status\n".encode("ascii"))
+    tn.write(b"status\n")
     status_res = read_console(["#end", "Not connected to server"])
 
     # parse result
@@ -127,6 +136,46 @@ def get_players():
     return players
 
 
+def get_player_stats(id64):
+    url = f"https://csgostats.gg/player/{id64}"
+    stats_page = scraper.get(url)
+
+    if (
+        '<span style="font-size:24px; color:#fff; display:block; text-align:center;">No matches have been added for this player</span>'
+        in stats_page.text
+    ):
+        return None
+
+    soup = BeautifulSoup(stats_page.text, "html.parser")
+
+    # get rank
+    player_data = {"url": url}
+
+    rank_container = soup.find(class_="player-ranks")
+    if rank_container:
+        rank_images = rank_container.select("img[src]")
+
+        def get_rank(index):
+            if index >= len(rank_images):
+                return None
+
+            image_src = rank_images[index]["src"]
+            rank_index = int(image_src.split("ranks/")[1].split(".png")[0]) - 1
+            return RANK_NAMES[rank_index]
+
+        player_data["rank"] = get_rank(0)
+        player_data["best_rank"] = get_rank(1)
+
+    wins_container = soup.find(id="competitve-wins")
+    if wins_container:
+        player_data["wins"] = wins_container.find("span").text
+
+    player_data["kd"] = soup.find(id="kpd").find("span").text
+    player_data["rating"] = soup.find(id="rating").find("span").text
+
+    return player_data
+
+
 if __name__ == "__main__":
     try:
         connect()
@@ -140,47 +189,42 @@ if __name__ == "__main__":
         print("no players in server")
         quit()
 
+    print_game()
+    print_both("[rank reveal] ranks")
+
     scraper = cloudscraper.create_scraper()
-    for player in players:
+    for i, player in enumerate(players):
         if player["self"]:
             continue
 
+        print_both()
+
         id64 = Converter.to_steamID64(player["steamid"])
-        url = f"https://csgostats.gg/player/{id64}"
-
-        stats_page = scraper.get(url)
-
-        if (
-            '<span style="font-size:24px; color:#fff; display:block; text-align:center;">No matches have been added for this player</span>'
-            in stats_page.text
-        ):
+        player_stats = get_player_stats(id64)
+        if not player_stats:
+            print_both(f"{player['name']} | failed to get stats")
             continue
 
-        soup = BeautifulSoup(stats_page.text, "html.parser")
+        # main details
+        print_both(
+            f"{player['name']} | {'rank' in player_stats and player_stats['rank'] or 'unranked'}"
+        )
 
-        # get rank
-        player_data = {}
+        # extra details
+        extra_str = ""
 
-        rank_container = soup.find(class_="player-ranks")
-        if rank_container:
-            rank_images = rank_container.select("img[src]")
+        for key, value in player_stats.items():
+            if key in ["rank"]:
+                continue
 
-            def get_rank(index):
-                if index >= len(rank_images):
-                    return None
+            if extra_str != "":
+                extra_str += ", "
 
-                image_src = rank_images[index]["src"]
-                rank_index = int(image_src.split("ranks/")[1].split(".png")[0]) - 1
-                return RANK_NAMES[rank_index]
+            extra_str += f"{key}: {value}"
 
-            player_data["rank"] = get_rank(0)
-            player_data["best_rank"] = get_rank(1)
+        if extra_str:
+            print_both(extra_str)
 
-        wins_container = soup.find(id="competitve-wins")
-        if wins_container:
-            player_data["wins"] = wins_container.find("span").text
-
-        player_data["kd"] = soup.find(id="kpd").find("span").text
-        player_data["rating"] = soup.find(id="rating").find("span").text
-
-        print(f"{player['name']} | {player_data} | {url}")
+    print_game()
+    print_game("[rank reveal] done")
+    print_game()
