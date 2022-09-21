@@ -225,6 +225,6 @@ if __name__ == "__main__":
         if extra_str:
             print_both(extra_str)
 
-    print_game()
-    print_game("[rank reveal] done")
+    print_both()
+    print_both("[rank reveal] done")
     print_game()
