@@ -114,7 +114,7 @@ def get_players():
             fields.append(cur_field)
 
         # filter out gotv
-        if fields[1] == "GOTV":
+        if fields[1] in ["GOTV", "BOT"]:
             continue
 
         # add player
